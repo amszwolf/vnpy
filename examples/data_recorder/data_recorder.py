@@ -7,6 +7,15 @@
 # 加载Python标准库
 from logging import INFO
 from time import sleep
+from pathlib import Path
+
+# ============================================================
+# 设置自定义数据存储路径
+# ============================================================
+CUSTOM_DATA_DIR = Path(r"D:\Data\vnpy")
+if not CUSTOM_DATA_DIR.exists():
+    CUSTOM_DATA_DIR.mkdir(parents=True, exist_ok=True)
+    print(f"✓ 创建数据目录: {CUSTOM_DATA_DIR}")
 
 # 加载VeighNa核心框架
 from vnpy.event import EventEngine, Event
@@ -15,6 +24,16 @@ from vnpy.trader.engine import MainEngine, LogEngine
 from vnpy.trader.object import ContractData
 from vnpy.trader.constant import Exchange, Product
 from vnpy.trader.event import EVENT_CONTRACT
+
+# 修改VeighNa的数据目录路径
+# 必须在数据库初始化之前修改
+import vnpy.trader.utility as trader_utility
+trader_utility.TRADER_DIR = CUSTOM_DATA_DIR
+trader_utility.TEMP_DIR = CUSTOM_DATA_DIR
+
+# 验证路径修改
+print(f"✓ 数据存储路径已设置为: {CUSTOM_DATA_DIR}")
+print(f"  验证: TEMP_DIR = {trader_utility.TEMP_DIR}")
 
 # 加载VeighNa插件模块
 from vnpy_ctp import CtpGateway
@@ -32,8 +51,8 @@ SETTINGS["log.console"] = True      # 在控制台显示日志，方便实时查
 # CTP接口登录信息
 # 以下使用的是SimNow模拟账户信息，初学者可以在SimNow官网申请
 ctp_setting: dict[str, str] = {
-    "用户名": "888888",                       # SimNow账户名
-    "密码": "123456",                         # SimNow密码
+    "用户名": "005442",                       # SimNow账户名
+    "密码": "983311",                         # SimNow密码
     "经纪商代码": "9999",                     # SimNow经纪商代码固定为9999
     "交易服务器": "180.168.146.187:10201",    # SimNow交易服务器地址和端口
     "行情服务器": "180.168.146.187:10211",    # SimNow行情服务器地址和端口
@@ -46,9 +65,9 @@ ctp_setting: dict[str, str] = {
 # 可以根据需要取消注释来添加更多交易所
 recording_exchanges: list[Exchange] = [
     Exchange.CFFEX,          # 中国金融期货交易所
-    # Exchange.SHFE,         # 上海期货交易所
-    # Exchange.DCE,          # 大连商品交易所
-    # Exchange.CZCE,         # 郑州商品交易所
+    Exchange.SHFE,         # 上海期货交易所
+    Exchange.DCE,          # 大连商品交易所
+    Exchange.CZCE,         # 郑州商品交易所
     # Exchange.GFEX,         # 广州期货交易所
     # Exchange.INE,          # 上海国际能源交易中心
 ]
@@ -59,6 +78,22 @@ recording_exchanges: list[Exchange] = [
 recording_products: list[Product] = [
     Product.FUTURES,        # 期货品种
     # Product.OPTION,       # 期权品种
+]
+
+# 要录制数据的合约代码前缀列表
+# 合约代码前缀用于筛选特定品种，例如：
+# - "IF" 表示沪深300股指期货（IF2506, IF2507等）
+# - "IM" 表示中证2000股指期货（IM2506, IM2507等）
+# - "OI" 表示菜籽油期货（OI2501, OI2502等）
+# - "RB" 表示螺纹钢期货（RB2501, RB2502等）
+# - "A" 表示豆1期货（A2501, A2502等）
+# 如果 recording_symbols 为空列表 []，则录制所有符合交易所和品种类型的合约
+recording_symbols: list[str] = [
+    "IF",       # 沪深300股指期货
+    "IM",       # 中证2000股指期货
+    "OI",       # 菜籽油
+    "RB",       # 螺纹钢
+    "A",        # 豆1（大豆1号）
 ]
 
 
@@ -72,17 +107,38 @@ def run_recorder() -> None:
     3. 设置数据录制规则
     4. 连接到交易所并开始录制数据
     """
+    print("\n" + "=" * 60)
+    print("启动数据录制程序")
+    print("=" * 60)
+    
+    # 验证数据路径
+    from vnpy.trader.utility import TEMP_DIR, get_file_path
+    from vnpy.trader.setting import SETTINGS
+    print(f"\n[配置信息]")
+    print(f"  数据存储路径: {TEMP_DIR}")
+    print(f"  数据库文件: {get_file_path(SETTINGS['database.database'])}")
+    print(f"  筛选品种: {recording_symbols}")
+    print(f"  筛选交易所: {[e.value for e in recording_exchanges]}")
+    
     # 创建事件引擎，负责系统内各模块间的通信
+    print(f"\n[1/5] 创建事件引擎...")
     event_engine: EventEngine = EventEngine()
+    print(f"  ✓ 事件引擎创建成功")
 
     # 创建主引擎，管理系统功能模块，包括底层接口、上层应用等
+    print(f"\n[2/5] 创建主引擎...")
     main_engine: MainEngine = MainEngine(event_engine)
+    print(f"  ✓ 主引擎创建成功")
 
     # 添加CTP接口，连接到期货市场
+    print(f"\n[3/5] 添加CTP Gateway...")
     main_engine.add_gateway(CtpGateway)
+    print(f"  ✓ CTP Gateway 已注册")
 
     # 添加数据录制引擎，用于录制Tick行情入库
+    print(f"\n[4/5] 添加数据录制引擎...")
     recorder_engine: RecorderEngine = main_engine.add_app(DataRecorderApp)
+    print(f"  ✓ 数据录制引擎已加载")
 
     # 定义合约订阅函数
     def subscribe_data(event: Event) -> None:
@@ -99,11 +155,33 @@ def run_recorder() -> None:
         contract: ContractData = event.data
 
         # 判断合约是否符合录制条件
-        if (
-            contract.exchange in recording_exchanges    # 检查合约所属交易所是否在预设列表中
-            and contract.product in recording_products  # 检查合约品种类型是否在预设列表中
-        ):
+        # 1. 检查交易所
+        exchange_match = contract.exchange in recording_exchanges
+        # 2. 检查品种类型
+        product_match = contract.product in recording_products
+        # 3. 检查合约代码前缀（如果 recording_symbols 不为空）
+        symbol_match = True
+        if recording_symbols:  # 如果指定了合约代码列表，则进行筛选
+            # 提取合约代码的品种前缀
+            # 期货合约代码格式：品种代码（1-2个字符）+ 年月（4个数字）
+            # 例如：IF2506（IF是品种代码），RB2501（RB是品种代码），A2501（A是品种代码）
+            # 先尝试匹配2个字符的前缀（如 IF, RB, OI, IM）
+            symbol_prefix_2 = contract.symbol[:2] if len(contract.symbol) >= 2 else ""
+            # 再尝试匹配1个字符的前缀（如 A）
+            symbol_prefix_1 = contract.symbol[0] if len(contract.symbol) >= 1 else ""
+            
+            # 优先匹配2字符前缀，如果不在列表中，再匹配1字符前缀
+            if symbol_prefix_2 in recording_symbols:
+                symbol_match = True
+            elif symbol_prefix_1 in recording_symbols:
+                symbol_match = True
+            else:
+                symbol_match = False
+        
+        # 如果所有条件都满足，则添加录制任务
+        if exchange_match and product_match and symbol_match:
             # 添加该合约的行情录制任务，vt_symbol是VeighNa中的唯一标识符，格式为"代码.交易所"
+            print(f"开始录制: {contract.vt_symbol} ({contract.name})")
             recorder_engine.add_tick_recording(contract.vt_symbol)      # 录制Tick数据
             recorder_engine.add_bar_recording(contract.vt_symbol)       # 录制分钟K线
 
@@ -129,10 +207,19 @@ def run_recorder() -> None:
     event_engine.register(EVENT_RECORDER_LOG, print_log)
 
     # 连接CTP接口并登录，第一个参数是接口设置，第二个参数是接口名称
+    print(f"\n[5/5] 连接CTP服务器...")
+    print(f"  用户名: {ctp_setting['用户名']}")
+    print(f"  经纪商代码: {ctp_setting['经纪商代码']}")
+    print(f"  交易服务器: {ctp_setting['交易服务器']}")
+    print(f"  行情服务器: {ctp_setting['行情服务器']}")
     main_engine.connect(ctp_setting, CtpGateway.default_name)
+    print(f"  ✓ 连接请求已发送")
 
     # 等待30秒，CTP接口连接后需要一段时间来完成初始化
+    print(f"\n等待CTP连接初始化（30秒）...")
+    print(f"  正在查询合约信息...")
     sleep(30)
+    print(f"  ✓ 初始化完成")
 
     # 提示用户程序已经开始运行，用户可以根据需要随时退出
     input(">>>>>> 高频行情数据录制已启动，正在记录数据。按回车键退出程序 <<<<<<")

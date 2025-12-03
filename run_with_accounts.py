@@ -10,6 +10,7 @@ from vnpy.event import EventEngine
 from vnpy.trader.engine import MainEngine
 from vnpy.trader.ui import MainWindow, create_qapp
 from vnpy.trader.utility import TEMP_DIR, load_json
+from vnpy.trader.setting import SETTINGS
 
 
 def is_module_installed(module_name: str) -> bool:
@@ -321,6 +322,47 @@ def main():
     print("  - 数据采集：点击【功能】->【行情记录】录制实时Tick和K线数据")
     print("  - K线图表：点击【功能】->【K线图表】查看实时和历史K线图")
     print("  - 合约查看：点击【系统】->【合约查询】查看所有可用合约")
+    
+    # 检查数据源配置
+    datafeed_name = SETTINGS.get("datafeed.name", "")
+    if not datafeed_name:
+        print("\n【数据源配置提示】")
+        print("=" * 60)
+        print("⚠ 数据源未配置，DataManager无法下载历史数据")
+        print("\n配置方法：")
+        print("  1. 通过GUI配置：点击菜单【配置】，设置数据服务信息")
+        print("  2. 通过代码配置：在启动脚本中设置 SETTINGS")
+        print("\n已安装的数据服务模块：")
+        if is_module_installed("vnpy_tushare"):
+            print("  ✓ vnpy_tushare (TuShare) - 推荐，性价比高")
+            print("    配置示例：")
+            print('    SETTINGS["datafeed.name"] = "tushare"')
+            print('    SETTINGS["datafeed.username"] = "token"')
+            print('    SETTINGS["datafeed.password"] = "你的TuShare Token"')
+            print("    获取Token: https://tushare.pro/")
+        if is_module_installed("vnpy_rqdata"):
+            print("  ✓ vnpy_rqdata (RQData)")
+            print("    配置示例：")
+            print('    SETTINGS["datafeed.name"] = "rqdata"')
+            print('    SETTINGS["datafeed.username"] = "license"')
+            print('    SETTINGS["datafeed.password"] = "你的RQData License"')
+        print("\n详细配置说明请查看：数据源配置指南.md")
+    else:
+        print(f"\n【数据源配置】")
+        print("=" * 60)
+        print(f"✓ 已配置数据源: {datafeed_name}")
+        username = SETTINGS.get("datafeed.username", "")
+        if username:
+            print(f"  用户名: {username}")
+        else:
+            print("  ⚠ 用户名未配置")
+        
+        # 如果是TuShare，提供额外提示
+        if datafeed_name == "tushare":
+            print("\n  TuShare数据源提示：")
+            print("  - 免费版有积分限制，建议使用付费版")
+            print("  - 支持股票、期货、指数等多种数据")
+            print("  - 访问 https://tushare.pro/ 管理Token和积分")
     
     if configs:
         print(f"\n账号配置：")

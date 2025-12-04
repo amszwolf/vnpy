@@ -1,0 +1,35 @@
+============================================================
+HLM5 策略回测结果
+============================================================
+
+合约: OI888
+回测周期: 5m
+初始资金: 100,000.00
+
+start_date: 2024-10-08
+end_date: 2025-01-27
+total_days: 79
+profit_days: 31
+loss_days: 39
+capital: 100000
+end_balance: 105119.6612
+max_drawdown: -3521.1791999999987
+max_ddpercent: -3.2411192577630303
+max_drawdown_duration: 59
+total_net_pnl: 5119.6612000000005
+daily_net_pnl: 64.80583797468356
+total_commission: 525.3388000000001
+daily_commission: 6.649858227848102
+total_slippage: 715.0
+daily_slippage: 9.050632911392405
+total_turnover: 26266940.0
+daily_turnover: 332492.91139240505
+total_trade_count: 286
+daily_trade_count: 3.6202531645569622
+total_return: 5.119661200000003
+annual_return: 15.55340111392406
+daily_return: 0.06320145032880829
+return_std: 0.4431470050884216
+sharpe_ratio: 2.2094534027667767
+ewm_sharpe: 1.6531371808597741
+return_drawdown_ratio: 1.579596674123467

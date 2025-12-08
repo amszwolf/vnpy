@@ -2717,39 +2717,22 @@ class SmartDataUpdateManager:
     
     def _process_raw_data(self, ticker: str, my_raw_db: str, my_raw_table: str, 
                          start_date: str, end_date: str) -> int:
-        """处理期货原始数据下载"""
-        # 连接MySQL数据库
-        mysql_conn = pymysql.connect(
-            host='rm-bp105by33qs9s358i5o.mysql.rds.aliyuncs.com',
-            port=3306,
-            user='root',
-            password='Wxtfz13245',
-            database=my_raw_db
+        """处理期货原始数据下载 - 使用RQData"""
+        from rqdata_loader import load_futures_data_from_rqdata
+        
+        # 使用RQData加载数据（5分钟周期）
+        df = load_futures_data_from_rqdata(
+            ticker=ticker,
+            start_date=start_date,
+            end_date=end_date,
+            interval='5m'
         )
-        
-        # 构建SQL查询 - 期货数据使用 trade_time 字段
-        # 将日期转换为datetime格式以匹配 trade_time 字段
-        start_datetime = f"{start_date} 00:00:00"
-        end_datetime = f"{end_date} 23:59:59"
-        
-        query = f"""
-        SELECT trade_time as datetime, open, high, low, close, vol as volume
-        FROM {my_raw_table}
-        WHERE ts_code = '{ticker}'
-        AND trade_time >= '{start_datetime}'
-        AND trade_time <= '{end_datetime}'
-        ORDER BY trade_time
-        """
-        
-        # 读取数据到DataFrame
-        df = pd.read_sql(query, mysql_conn)
         
         if df.empty:
             self.logger.warning(f"No raw data found for {ticker}")
-            mysql_conn.close()
             return 0
         
-        # 数据预处理
+        # 数据预处理（已在loader中完成，这里再做一次确保）
         df['datetime'] = pd.to_datetime(df['datetime'])
         df = check_raw_data(df)
         
@@ -2758,7 +2741,6 @@ class SmartDataUpdateManager:
         records_updated = self.db.batch_update_data(ticker, raw_data_df)
         
         self.logger.info(f"Updated {records_updated} raw data records for {ticker}")
-        mysql_conn.close()
         return records_updated
     
     def _process_realtime_data(self, ticker: str, my_raw_db: str, my_raw_table: str) -> int:
@@ -3700,39 +3682,22 @@ def process_ticker_smart(ticker: str, db_path: str, my_raw_db: str, my_raw_table
     
     def _process_raw_data(self, ticker: str, my_raw_db: str, my_raw_table: str, 
                          start_date: str, end_date: str) -> int:
-        """处理期货原始数据下载"""
-        # 连接MySQL数据库
-        mysql_conn = pymysql.connect(
-            host='rm-bp105by33qs9s358i5o.mysql.rds.aliyuncs.com',
-            port=3306,
-            user='root',
-            password='Wxtfz13245',
-            database=my_raw_db
+        """处理期货原始数据下载 - 使用RQData"""
+        from rqdata_loader import load_futures_data_from_rqdata
+        
+        # 使用RQData加载数据（5分钟周期）
+        df = load_futures_data_from_rqdata(
+            ticker=ticker,
+            start_date=start_date,
+            end_date=end_date,
+            interval='5m'
         )
-        
-        # 构建SQL查询 - 期货数据使用 trade_time 字段
-        # 将日期转换为datetime格式以匹配 trade_time 字段
-        start_datetime = f"{start_date} 00:00:00"
-        end_datetime = f"{end_date} 23:59:59"
-        
-        query = f"""
-        SELECT trade_time as datetime, open, high, low, close, vol as volume
-        FROM {my_raw_table}
-        WHERE ts_code = '{ticker}'
-        AND trade_time >= '{start_datetime}'
-        AND trade_time <= '{end_datetime}'
-        ORDER BY trade_time
-        """
-        
-        # 读取数据到DataFrame
-        df = pd.read_sql(query, mysql_conn)
         
         if df.empty:
             self.logger.warning(f"No raw data found for {ticker}")
-            mysql_conn.close()
             return 0
         
-        # 数据预处理
+        # 数据预处理（已在loader中完成，这里再做一次确保）
         df['datetime'] = pd.to_datetime(df['datetime'])
         df = check_raw_data(df)
         
@@ -3741,7 +3706,6 @@ def process_ticker_smart(ticker: str, db_path: str, my_raw_db: str, my_raw_table
         records_updated = self.db.batch_update_data(ticker, raw_data_df)
         
         self.logger.info(f"Updated {records_updated} raw data records for {ticker}")
-        mysql_conn.close()
         return records_updated
     
     def _process_realtime_data(self, ticker: str, my_raw_db: str, my_raw_table: str) -> int:

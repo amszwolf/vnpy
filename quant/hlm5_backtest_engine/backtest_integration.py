@@ -272,6 +272,20 @@ def save_backtest_results_auto(
             'fixed_size': 1,
             'slippage': 2.5
         },
+        'trading_signals': {
+            'entry_conditions': {
+                'min_cross_signals': 1,
+                'require_prophet_trend': False,
+                'prophet_min_duration': 2,
+                'prophet_min_change': 0.01
+            },
+            'exit_conditions': {
+                'stop_loss_pct': 0.03,
+                'take_profit_pct': 0.09,
+                'trailing_stop_pct': 0.02,
+                'use_trailing_stop': True
+            }
+        },
         'comments': f'自动保存于 {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}'
     }
     
